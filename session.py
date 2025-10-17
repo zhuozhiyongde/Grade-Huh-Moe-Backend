@@ -28,12 +28,15 @@ GRADE_SERVICE_GID = (
     "V3hMVFErb1V5QzlMTmVSUFZNd3E0Z3kxQzRxeE1VQWlPemFDQnJJWVV2cUNBQzVLVWVDM0R0Q2VR"
     "bzNPM1Q4MDlKQlcxK2NDWXFKZXVndkFvaXlFdnc9PQ"
 )
+GID_LENGTH = 118
+GID_ALLOWED_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 
 
 class Session(requests.Session):
     def __init__(self, config, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._config = config
+        self._gid = self._select_gid(config)
         self.verify = False  # PKUHSC 证书链经常异常，关闭校验更稳
         requests.packages.urllib3.disable_warnings()  # type: ignore[attr-defined]
         self._grade_referer = None
@@ -111,11 +114,23 @@ class Session(requests.Session):
         self.headers["Referer"] = self._grade_referer
         return True
 
+    def _select_gid(self, config: dict) -> str:
+        gid = config.get("gid")
+        if gid and self._is_valid_gid(gid):
+            return gid
+        return GRADE_SERVICE_GID
+
+    @classmethod
+    def _is_valid_gid(cls, gid: str) -> bool:
+        if len(gid) != GID_LENGTH:
+            return False
+        return all(char in GID_ALLOWED_CHARS for char in gid)
+
     def _build_login_url(self) -> str:
         timestamp = int(time.time() * 1000)
         service = (
             f"{GRADE_INDEX_URL}"
-            f"?t_s={timestamp}&amp_sec_version_=1&gid_={GRADE_SERVICE_GID}"
+            f"?t_s={timestamp}&amp_sec_version_=1&gid_={self._gid}"
             "&EMAP_LANG=zh&THEME=bjmu#/cjcx"
         )
         encoded_service = quote(service, safe="")

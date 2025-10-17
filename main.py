@@ -18,11 +18,18 @@ app.add_middleware(
 class CredentialPayload(BaseModel):
     username: str
     password: str
+    gid: str | None = None
 
 
 @app.post("/med-scores")
 async def fetch_med_scores(payload: CredentialPayload):
-    session = Session({"username": payload.username, "password": payload.password})
+    gid = (payload.gid or "").strip() or None
+    if gid and not Session._is_valid_gid(gid):
+        return {"success": False, "errMsg": "GID 格式不正确，请重新填写"}
+
+    session = Session(
+        {"username": payload.username, "password": payload.password, "gid": gid}
+    )
     try:
         await run_in_threadpool(session.login)
         data = await run_in_threadpool(session.get_grade)
