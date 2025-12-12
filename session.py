@@ -21,15 +21,15 @@ from Crypto.Util.Padding import pad
 
 AES_CHARS = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
 GRADE_INDEX_URL = "https://apps.bjmu.edu.cn/jwapp/sys/cjcx/*default/index.do"
-GRADE_QUERY_URL = (
-    "https://apps.bjmu.edu.cn/jwapp/sys/cjcx/modules/cjcx/xscjcx.do"
-)
+GRADE_QUERY_URL = "https://apps.bjmu.edu.cn/jwapp/sys/cjcx/modules/cjcx/xscjcx.do"
 GRADE_SERVICE_GID = (
     "V3hMVFErb1V5QzlMTmVSUFZNd3E0Z3kxQzRxeE1VQWlPemFDQnJJWVV2cUNBQzVLVWVDM0R0Q2VR"
     "bzNPM1Q4MDlKQlcxK2NDWXFKZXVndkFvaXlFdnc9PQ"
 )
 GID_LENGTH = 118
-GID_ALLOWED_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
+GID_ALLOWED_CHARS = set(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+)
 
 
 class Session(requests.Session):
@@ -74,9 +74,7 @@ class Session(requests.Session):
         if not all([lt, execution, salt]):
             raise ValueError("登录页缺少必要字段，无法继续登录")
 
-        encrypted_pwd = self._encrypt_password(
-            self._config["password"], salt["value"]
-        )
+        encrypted_pwd = self._encrypt_password(self._config["password"], salt["value"])
 
         form_data = {
             "username": self._config["username"],
@@ -189,3 +187,12 @@ class Session(requests.Session):
 
         encrypted_bytes = cipher.encrypt(pad(payload, AES.block_size, style="pkcs7"))
         return base64.b64encode(encrypted_bytes).decode("utf-8")
+
+
+if __name__ == "__main__":
+    username = input("请输入学号: ")
+    password = input("请输入密码: ")
+    gid = input("请输入 GID: ")
+    session = Session({"username": username, "password": password, "gid": gid})
+    session.login()
+    print(session.get_grade())

@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from get_gid import fetch_gid
+from playwright.sync_api import sync_playwright
 from session import Session
 
 
@@ -19,6 +21,27 @@ class CredentialPayload(BaseModel):
     username: str
     password: str
     gid: str | None = None
+
+
+@app.post("/med-gid")
+async def fetch_med_gid(payload: CredentialPayload):
+    username = payload.username.strip()
+    password = payload.password
+    if not username:
+        return {"success": False, "errMsg": "请填写学号"}
+    if not password:
+        return {"success": False, "errMsg": "请填写密码"}
+
+    def task() -> str:
+        with sync_playwright() as playwright:
+            return fetch_gid(playwright, username, password)
+
+    try:
+        gid = await run_in_threadpool(task)
+        return {"success": True, "gid": gid}
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc) or "GID 获取失败"
+        return {"success": False, "errMsg": message}
 
 
 @app.post("/med-scores")
