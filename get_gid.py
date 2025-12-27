@@ -69,7 +69,9 @@ def fetch_gid(playwright: Playwright, username: str, password: str) -> str:
             password_input.fill(password)
             submit_button.wait_for(state="visible", timeout=30_000)
             try:
-                with page.expect_navigation(wait_until="domcontentloaded", timeout=30_000):
+                with page.expect_navigation(
+                    wait_until="domcontentloaded", timeout=30_000
+                ):
                     submit_button.click()
             except PlaywrightTimeoutError:
                 # 有的情况下登录是局部刷新/重定向较慢：给一点缓冲，并在仍停留登录页时抛错
@@ -78,20 +80,20 @@ def fetch_gid(playwright: Playwright, username: str, password: str) -> str:
                     raise
 
         try:
-            page.get_by_text("服务大厅", exact=True).click(timeout=10_000)
+            page.locator(".name:has-text('服务大厅')").click(timeout=10_000)
         except PlaywrightTimeoutError:
             pass
 
         try:
             with page.expect_popup(timeout=10_000) as popup_info:
                 try:
-                    page.get_by_text("成绩查询", exact=True).click()
+                    page.locator("label[title='成绩查询']").click()
                 except PlaywrightTimeoutError:
                     raise
             target = popup_info.value
         except PlaywrightTimeoutError:
             try:
-                page.get_by_text("成绩查询", exact=True).click()
+                page.locator("label[title='成绩查询']").click()
             except PlaywrightTimeoutError:
                 raise
             target = page
