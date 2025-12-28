@@ -46,14 +46,17 @@ async def fetch_med_gid(payload: CredentialPayload):
 
 @app.post("/med-scores")
 async def fetch_med_scores(payload: CredentialPayload):
-    gid = (payload.gid or "").strip() or None
-    if gid and not Session._is_valid_gid(gid):
+    gid = (payload.gid or "").strip()
+    if not gid:
+        return {"success": False, "errMsg": "请填写 GID"}
+    if not Session._is_valid_gid(gid):
         return {"success": False, "errMsg": "GID 格式不正确，请重新填写"}
 
-    session = Session(
-        {"username": payload.username, "password": payload.password, "gid": gid}
-    )
+    session: Session | None = None
     try:
+        session = Session(
+            {"username": payload.username, "password": payload.password, "gid": gid}
+        )
         await run_in_threadpool(session.login)
         data = await run_in_threadpool(session.get_grade)
         return {"success": True, "data": data}
@@ -61,4 +64,5 @@ async def fetch_med_scores(payload: CredentialPayload):
         message = str(exc) or "医学部成绩获取失败"
         return {"success": False, "errMsg": message}
     finally:
-        await run_in_threadpool(session.close)
+        if session:
+            await run_in_threadpool(session.close)

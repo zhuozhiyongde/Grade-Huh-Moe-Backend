@@ -22,10 +22,6 @@ from Crypto.Util.Padding import pad
 AES_CHARS = "ABCDEFGHJKMNPQRSTWXYZabcdefhijkmnprstwxyz2345678"
 GRADE_INDEX_URL = "https://apps.bjmu.edu.cn/jwapp/sys/cjcx/*default/index.do"
 GRADE_QUERY_URL = "https://apps.bjmu.edu.cn/jwapp/sys/cjcx/modules/cjcx/xscjcx.do"
-GRADE_SERVICE_GID = (
-    "V3hMVFErb1V5QzlMTmVSUFZNd3E0Z3kxQzRxeE1VQWlPemFDQnJJWVV2cUNBQzVLVWVDM0R0Q2VR"
-    "bzNPM1Q4MDlKQlcxK2NDWXFKZXVndkFvaXlFdnc9PQ"
-)
 GID_LENGTH = 118
 GID_ALLOWED_CHARS = set(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
@@ -113,10 +109,12 @@ class Session(requests.Session):
         return True
 
     def _select_gid(self, config: dict) -> str:
-        gid = config.get("gid")
-        if gid and self._is_valid_gid(gid):
-            return gid
-        return GRADE_SERVICE_GID
+        gid = (config.get("gid") or "").strip()
+        if not gid:
+            raise ValueError("请提供 GID")
+        if not self._is_valid_gid(gid):
+            raise ValueError("GID 格式不正确，请重新填写")
+        return gid
 
     @classmethod
     def _is_valid_gid(cls, gid: str) -> bool:
@@ -195,4 +193,6 @@ if __name__ == "__main__":
     gid = input("请输入 GID: ")
     session = Session({"username": username, "password": password, "gid": gid})
     session.login()
-    print(session.get_grade())
+    result = session.get_grade()
+    with open("result.json", "w") as f:
+        json.dump(result, f, ensure_ascii=False, indent=4)
