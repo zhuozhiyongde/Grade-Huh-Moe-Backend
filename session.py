@@ -94,14 +94,19 @@ class Session(requests.Session):
             }
         )
 
-        response = self.post(
-            login_page.url,
-            data=form_data,
-            allow_redirects=True,
-            headers=login_headers,
-        )
-        if "统一身份认证平台" in response.text:
-            raise ValueError("统一身份认证失败，请检查账号或密码")
+        try:
+            response = self.post(
+                login_page.url,
+                data=form_data,
+                allow_redirects=True,
+                headers=login_headers,
+            )
+            if "统一身份认证平台" in response.text:
+                raise ValueError("统一身份认证失败，请检查账号或密码")
+        except Exception:
+            raise ValueError(
+                "登录失败，请检查账号或密码 / 是否在系统完成了初始登录验证，若仍有问题，请联系开发者"
+            )
 
         # 登录成功后记录成绩页面，用于后续成绩查询 Referer
         self._grade_referer = response.url or GRADE_INDEX_URL
