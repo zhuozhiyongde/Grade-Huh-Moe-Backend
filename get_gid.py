@@ -11,6 +11,8 @@ from playwright.sync_api import (
 GID_REGEX = re.compile(r"^[A-Za-z0-9]{118}$")
 # 保持与最开始脚本一致的入口：先走 authserver/login?service=...，登录后再进入服务大厅/成绩查询
 LOGIN_ENTRY_URL = "https://auth.bjmu.edu.cn/authserver/login?service=http%3A%2F%2Fapps.bjmu.edu.cn%2Flogin%3Fservice%3Dhttp%3A%2F%2Fapps.bjmu.edu.cn%2F%2Fywtb-portal%2Fofficialbjmu%2Findex.html"
+# SERVICE_HALL_URL = "https://apps.bjmu.edu.cn/index.html#/apps"
+GRADE_QUERY_URL = "https://apps.bjmu.edu.cn/index.html#/ServiceShow?isMobile=0&wid=1371866913994661888"
 
 
 def extract_gid_from_url(url: str) -> str | None:
@@ -80,33 +82,23 @@ def fetch_gid(playwright: Playwright, username: str, password: str) -> str:
                     raise
 
         try:
-            page.locator(".name:has-text('服务大厅')").click(timeout=10_000)
+            page.wait_for_load_state("networkidle", timeout=5_000)
+        except PlaywrightTimeoutError:
+            # 页面可能持续有轮询请求，若未完全 idle 也继续尝试点击
+            pass
+        # page.goto(SERVICE_HALL_URL, wait_until="domcontentloaded")
+        # page.wait_for_load_state("domcontentloaded")
+        page.goto(GRADE_QUERY_URL, wait_until="domcontentloaded")
+
+        page.wait_for_load_state("domcontentloaded")
+        try:
+            page.wait_for_url(re.compile(r".*gid_=[A-Za-z0-9]{118}"), timeout=15_000)
         except PlaywrightTimeoutError:
             pass
 
-        try:
-            with page.expect_popup(timeout=10_000) as popup_info:
-                try:
-                    page.locator("label[title='成绩查询']").click()
-                except PlaywrightTimeoutError:
-                    raise
-            target = popup_info.value
-        except PlaywrightTimeoutError:
-            try:
-                page.locator("label[title='成绩查询']").click()
-            except PlaywrightTimeoutError:
-                raise
-            target = page
-
-        target.wait_for_load_state("domcontentloaded")
-        try:
-            target.wait_for_url(re.compile(r".*gid_=[A-Za-z0-9]{118}"), timeout=15_000)
-        except PlaywrightTimeoutError:
-            pass
-
-        gid = extract_gid_from_url(target.url)
+        gid = extract_gid_from_url(page.url)
         if not gid:
-            raise ValueError(f"未在成绩查询页面 URL 中找到有效的 gid_: {target.url}")
+            raise ValueError(f"未在成绩查询页面 URL 中找到有效的 gid_: {page.url}")
         return gid
     finally:
         context.close()
